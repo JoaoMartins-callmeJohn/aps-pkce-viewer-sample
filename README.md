@@ -6,6 +6,8 @@
 
 A single-page app that uses [PKCE OAuth flow](https://aps.autodesk.com/en/docs/oauth/v2/tutorials/get-3-legged-token-pkce/) to obtain a 3-legged token and then renders a design with [APS Viewer](https://aps.autodesk.com/en/docs/viewer/v7) — no server required.
 
+[![Watch the demo](https://img.youtube.com/vi/_ApOJNtrCmg/0.jpg)](https://www.youtube.com/watch?v=_ApOJNtrCmg)
+
 ## Features
 
 - **No server required** — the entire PKCE flow is handled client-side using `localStorage` and the browser's Web Crypto API.
