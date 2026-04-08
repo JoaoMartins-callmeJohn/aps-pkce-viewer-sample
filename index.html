@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>APS PKCE Viewer Sample</title>
+  <!-- APS Viewer files -->
+  <link rel="stylesheet" href="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/style.min.css" type="text/css">
+  <script src="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/viewer3D.min.js"></script>
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+    }
+
+    #login-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 1rem;
+    }
+
+    #login-container h1 {
+      margin-bottom: 0.5rem;
+    }
+
+    #login-container input[type="text"] {
+      width: 320px;
+      padding: 0.5rem 0.75rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    #login-container button {
+      padding: 0.5rem 2rem;
+      font-size: 1rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background-color: #0696D7;
+      color: white;
+    }
+
+    #login-container button:hover {
+      background-color: #0576b0;
+    }
+
+    #viewer {
+      width: 100%;
+      height: 100%;
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="login-container">
+    <h1>APS PKCE Viewer Sample</h1>
+    <input type="text" id="client_id" placeholder="Enter your Client ID">
+    <input type="text" id="model_urn" placeholder="Enter your Model URN">
+    <button id="login-btn">Login</button>
+  </div>
+  <div id="viewer"></div>
+
+  <script>
+    // Change this if you deploy on your own repo
+    const APS_CALLBACK_URL = window.location.origin + window.location.pathname.replace(/\/index\.html$/, '').replace(/\/$/, '');
+
+    /**
+     * Generates random string of specified length.
+     * @param {number} len Length of the output string.
+     * @param {string} chars Characters allowed in the output string.
+     * @returns {string}
+     */
+    function generateRandomString(len, chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789') {
+      const arr = new Array(len);
+      for (let i = 0; i < len; i++) {
+        arr[i] = chars[Math.floor(Math.random() * chars.length)];
+      }
+      return arr.join('');
+    }
+
+    /**
+     * Generates a PKCE code challenge for given code verifier (see https://aps.autodesk.com/en/docs/oauth/v2/tutorials/code-challenge/).
+     * @async
+     * @param {string} str Code verifier.
+     * @returns {Promise<string>}
+     */
+    async function generateCodeChallenge(str) {
+      const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+      return window.btoa(String.fromCharCode(...new Uint8Array(hash))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    }
+
+    /**
+     * Generates URL for initiating the PKCE authorization workflow (see https://aps.autodesk.com/en/docs/oauth/v2/tutorials/get-3-legged-token-pkce/#step-1-direct-the-user-to-the-authorization-web-flow-with-pkce).
+     * @param {string} clientId Application client ID.
+     * @param {string} callbackUrl Callback URL as configured on the dev. portal.
+     * @param {string[]} scopes List of authentication scopes.
+     * @param {string} nonce Arbitrary string to mitigate replay attacks.
+     * @param {string} challenge Code challenge generated from code verifier.
+     * @returns {string}
+     */
+    function generateLoginUrl(clientId, callbackUrl, scopes, nonce, challenge) {
+      const url = new URL('https://developer.api.autodesk.com/authentication/v2/authorize');
+      url.searchParams.append('response_type', 'code');
+      url.searchParams.append('client_id', clientId);
+      url.searchParams.append('redirect_uri', callbackUrl);
+      url.searchParams.append('scope', scopes.join(' '));
+      url.searchParams.append('nonce', nonce);
+      url.searchParams.append('prompt', 'login');
+      url.searchParams.append('code_challenge', challenge);
+      url.searchParams.append('code_challenge_method', 'S256');
+      return url.toString();
+    }
+
+    /**
+     * Exchanges temporary code from the PKCE authorization workflow for access token.
+     * See https://aps.autodesk.com/en/docs/oauth/v2/tutorials/get-3-legged-token-pkce/#step-3-exchange-the-authorization-code-with-pkce-for-an-access-token.
+     * @async
+     * @param {string} clientId Application client ID.
+     * @param {string} codeVerifier PKCE code verifier.
+     * @param {string} code Temporary code received from the PKCE authorization workflow.
+     * @param {string} callbackUrl Callback URL as configured on the dev. portal.
+     * @returns {Promise<object>}
+     */
+    async function exchangeToken(clientId, codeVerifier, code, callbackUrl) {
+      const payload = {
+        'grant_type': 'authorization_code',
+        'client_id': clientId,
+        'code_verifier': codeVerifier,
+        'code': code,
+        'redirect_uri': callbackUrl
+      };
+      const resp = await fetch('https://developer.api.autodesk.com/authentication/v2/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: Object.keys(payload).map(key => encodeURIComponent(key) + '=' + encodeURIComponent(payload[key])).join('&')
+      });
+      if (!resp.ok) {
+        throw new Error(await resp.text());
+      }
+      return resp.json();
+    }
+
+    /**
+     * Initializes the APS Viewer with the given access token and model URN.
+     * @param {string} accessToken 3-legged access token.
+     * @param {string} urn Model URN (base64-encoded).
+     */
+    function initViewer(accessToken, urn) {
+      document.getElementById('login-container').style.display = 'none';
+      document.getElementById('viewer').style.display = 'block';
+
+      const options = {
+        env: 'AutodeskProduction',
+        accessToken: accessToken,
+        isAEC: true
+      };
+
+      Autodesk.Viewing.Initializer(options, () => {
+        const viewer = new Autodesk.Viewing.GuiViewer3D(document.getElementById('viewer'));
+        viewer.start();
+        const documentId = urn.startsWith('urn:') ? urn : 'urn:' + urn;
+        Autodesk.Viewing.Document.load(documentId, (doc) => {
+          const viewables = doc.getRoot().getDefaultGeometry();
+          viewer.loadDocumentNode(doc, viewables);
+        }, (errorCode, errorMsg) => {
+          console.error('Error loading document:', errorCode, errorMsg);
+        });
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', async function () {
+      const params = new URLSearchParams(window.location.search);
+
+      if (params.has('code')) {
+        // Exchange the authorization code for an access token and render the model
+        try {
+          const codeVerifier = localStorage.getItem('code-verifier');
+          const clientId = localStorage.getItem('APS_CLIENT_ID');
+          const urn = localStorage.getItem('APS_MODEL_URN');
+          const credentials = await exchangeToken(clientId, codeVerifier, params.get('code'), APS_CALLBACK_URL);
+          // Clean up the URL so the code is not visible or reusable
+          window.history.replaceState({}, document.title, window.location.pathname);
+          initViewer(credentials.access_token, urn);
+        } catch (err) {
+          alert('Authentication error: ' + err.message + '\n\nCheck your Client ID and ensure the callback URL is registered in your APS application.');
+        }
+      } else if (params.has('error')) {
+        // Display any OAuth errors
+        alert(params.get('error') + (params.get('error_description') ? ': ' + params.get('error_description') : ''));
+      } else {
+        // Show the login form and prepare the PKCE code challenge
+        const codeVerifier = generateRandomString(64);
+        localStorage.setItem('code-verifier', codeVerifier);
+        const codeChallenge = await generateCodeChallenge(codeVerifier);
+
+        document.getElementById('login-btn').addEventListener('click', () => {
+          const clientId = document.getElementById('client_id').value.trim();
+          const urn = document.getElementById('model_urn').value.trim();
+          if (!clientId || !urn) {
+            alert('Please enter both a Client ID and a Model URN.');
+            return;
+          }
+          localStorage.setItem('APS_CLIENT_ID', clientId);
+          localStorage.setItem('APS_MODEL_URN', urn);
+          location.href = generateLoginUrl(clientId, APS_CALLBACK_URL, ['data:read'], generateRandomString(16), codeChallenge);
+        });
+      }
+    });
+  </script>
+</body>
+
+</html>
