@@ -212,6 +212,7 @@
             alert('Please enter both a Client ID and a Model URN.');
             return;
           }
+          
           localStorage.setItem('APS_CLIENT_ID', clientId);
           localStorage.setItem('APS_MODEL_URN', urn);
           location.href = generateLoginUrl(clientId, APS_CALLBACK_URL, ['data:read'], generateRandomString(16), codeChallenge);
