@@ -165,8 +165,8 @@
         isAEC: true
       };
 
+      Autodesk.Viewing.FeatureFlags.set('DS_ENDPOINTS', true);
       Autodesk.Viewing.Initializer(options, () => {
-        Autodesk.Viewing.FeatureFlags.set('DS_ENDPOINTS', true);
         const viewer = new Autodesk.Viewing.GuiViewer3D(document.getElementById('viewer'));
         viewer.start();
         const documentId = urn.startsWith('urn:') ? urn : 'urn:' + urn;
