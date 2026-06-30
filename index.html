@@ -161,10 +161,9 @@
 
       const options = {
         env: 'AutodeskProduction',
-        api: 'derivativeV2',
+        api: 'streamingV2',
         accessToken: accessToken,
-        isAEC: true,
-        endpoint: 'https://cdn.derivative.aus.autodesk.com',
+        isAEC: true
       };
 
       Autodesk.Viewing.FeatureFlags.set('DS_ENDPOINTS', true);
