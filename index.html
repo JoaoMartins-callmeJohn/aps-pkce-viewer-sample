@@ -159,6 +159,8 @@
       document.getElementById('login-container').style.display = 'none';
       document.getElementById('viewer').style.display = 'block';
 
+      Autodesk.Viewing.FeatureFlags.set('DS_ENDPOINTS', true);
+
       const bootstrapCdn = 'https://cdn.derivative.autodesk.com';
       const documentId = urn.startsWith('urn:') ? urn : 'urn:' + urn;
       const encodedUrn = documentId.replace(/^urn:/i, '');
@@ -174,9 +176,18 @@
     
       const { cdn } = await resp.json();
     
+      // working for SVF across all regions
+      //const options = {
+        //env: 'AutodeskProduction',
+        //api: 'derivativeV2',
+        //accessToken: accessToken,
+        //isAEC: true,
+        //endpoint: cdn.endpoint,
+      //};
+
       const options = {
-        env: 'AutodeskProduction',
-        api: 'derivativeV2',
+        env: 'AutodeskProduction2',
+        api: 'streamingV2',
         accessToken: accessToken,
         isAEC: true,
         endpoint: cdn.endpoint,
