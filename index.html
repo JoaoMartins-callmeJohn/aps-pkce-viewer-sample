@@ -159,7 +159,8 @@
       document.getElementById('login-container').style.display = 'none';
       document.getElementById('viewer').style.display = 'block';
 
-      Autodesk.Viewing.FeatureFlags.set('DS_ENDPOINTS', true);
+      //Maybe it works for SVF2... trying...
+      //Autodesk.Viewing.FeatureFlags.set('DS_ENDPOINTS', true);
 
       const bootstrapCdn = 'https://cdn.derivative.autodesk.com';
       const documentId = urn.startsWith('urn:') ? urn : 'urn:' + urn;
