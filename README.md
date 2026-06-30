@@ -43,13 +43,19 @@ Add the URL above as a callback URL in your APS application settings, then enter
     cd aps-pkce-viewer-sample
     ```
 
-2. Serve the files with any static HTTP server:
+2. Serve the files with any static HTTP server. The easiest option if you have Python installed is the included `server.py`, which automatically sets the callback URL to `http://localhost:8080/`:
+
+    ```bash
+    python server.py
+    ```
+
+    Alternatively, use any other static server:
 
     ```bash
     npx serve .
     ```
 
-3. Add the local URL (e.g., `http://localhost:3000`) as a callback URL in your APS application settings.
+3. Add the local URL (e.g., `http://localhost:8080/`) as a callback URL in your APS application settings.
 
 4. Open the served URL in your browser, enter your Client ID and model URN, and click **Login**.
 
