@@ -155,19 +155,33 @@
      * @param {string} accessToken 3-legged access token.
      * @param {string} urn Model URN (base64-encoded).
      */
-    function initViewer(accessToken, urn) {
+    async function initViewer(accessToken, urn) {
       document.getElementById('login-container').style.display = 'none';
       document.getElementById('viewer').style.display = 'block';
 
+      const bootstrapCdn = 'https://cdn.derivative.autodesk.com';
+      const documentId = urn.startsWith('urn:') ? urn : 'urn:' + urn;
+      const encodedUrn = documentId.replace(/^urn:/i, '');
+    
+      const resp = await fetch(
+        `${bootstrapCdn}/derivativeservice/v2/endpoints/${encodedUrn}`,
+        { headers: { Authorization: 'Bearer ' + accessToken } }
+      );
+    
+      if (!resp.ok) {
+        throw new Error('Endpoints fetch failed: ' + await resp.text());
+      }
+    
+      const { cdn } = await resp.json();
+    
       const options = {
         env: 'AutodeskProduction',
         api: 'derivativeV2',
         accessToken: accessToken,
         isAEC: true,
-        endpoint: 'https://cdn.derivative.aus.autodesk.com',
+        endpoint: cdn.endpoint,
       };
 
-      Autodesk.Viewing.FeatureFlags.set('DS_ENDPOINTS', true);
       Autodesk.Viewing.Initializer(options, () => {
         const viewer = new Autodesk.Viewing.GuiViewer3D(document.getElementById('viewer'));
         viewer.start();
