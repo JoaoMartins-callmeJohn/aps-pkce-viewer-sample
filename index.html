@@ -175,11 +175,11 @@
       }
     
       const { cdn } = await resp.json();
-    
-      // working for SVF across all regions
+      
+      // Loading SVF2 regardless of the region
       const options = {
-        env: 'AutodeskProduction',
-        api: 'derivativeV2',
+        env: 'AutodeskProduction2',
+        api: 'streamingV2',
         accessToken: accessToken,
         isAEC: true,
         endpoint: cdn.endpoint,
